@@ -1,0 +1,106 @@
+        
+/*Masterpage*/
+    #footer-link-meraki{
+        height: 15px;
+    }
+    #footer-link-gve-devnet{
+        height: 30px;
+        bottom: 4px;
+        position: relative;
+    }
+    #time_location_note{
+        color: var(--cui-color-gray-500);
+        padding-top: 5px;
+        text-align: center;
+        font-size: var(--cui-font-size-sm);
+    }
+    /*Position footer at bottom. Even with less content.*/
+    .cui .content{
+        min-height: 93vh;
+    }
+    body.cui footer, body.cui .footer{
+        margin-top: 0;
+    }
+    /*Header*/
+    #header-logo{
+        font-size: 23px;
+    }
+
+/*Login*/  
+    .required-label{
+        color: var(--cui-form-label-color);
+    }    
+    #customer-logo{
+        height:55px;
+        margin-bottom: 10px;
+    }
+
+/*Left Menu*/
+.cui .sidebar{
+    padding-top: 30px;
+}
+
+/*Charts from chart.js*/
+.chartjs-render-monitor{
+    background-color: white;
+    padding: 10px;
+}
+
+/*list groups*/
+.list-group{
+    padding-left: 0 !important;
+}
+
+.list-group-item{
+    list-style-type: none;
+}
+
+#meraki_api h3{
+    margin-top: 20px;
+}
+
+.list-group-item .btn--link{
+    padding-left: 0;
+    padding-right: 0;
+    text-align: left;
+}
+
+
+/*table*/
+.cui .responsive-table{
+    width: 100%;
+}
+
+.parent ~ .cchild {
+  display: none;
+}
+.open .parent ~ .cchild {
+  display: table-row;
+}
+.parent {
+  cursor: pointer;
+}
+tbody {
+  color: #212121;
+}
+.open {
+  background-color: #e6e6e6;
+}
+
+.open .cchild {
+  background-color: #999;
+  color: #686868;
+}
+.parent > *:last-child {
+  width: 30px;
+}
+.parent i {
+  transform: rotate(0deg);
+  transition: transform .3s cubic-bezier(.4,0,.2,1);
+  margin: -.5rem;
+  padding: .5rem;
+
+}
+.open .parent i {
+  transform: rotate(180deg)
+}

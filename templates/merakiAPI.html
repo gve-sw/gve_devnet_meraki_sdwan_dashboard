@@ -1,0 +1,92 @@
+
+{% extends "masterPage.html" %}
+
+{% block javascript %}
+$(document).ready(function() {
+    $('table').on('click', 'tr.parent', function(){
+      console.log($(this).attr('id'));
+      var hub_id = $(this).attr('id');
+      console.log($(`.${hub_id}`).toggle());
+      $(this).toggleClass('open');
+      $(`.${hub_id}`).toggleClass('open');
+    });
+});
+
+{% endblock %}
+
+{% block content %}
+
+    <div class="section">
+        <div class="flex-center-vertical">
+            <h1>{{ org_name }} SDWAN Dash</h1>
+        </div>
+    </div>
+    <div class="section">
+        <!--CUSTOMIZE: Change table content as needed -->
+        <div class="responsive-table">
+            <table class="table table--lined table--selectable table">
+                <thead>
+                    <tr>
+                        <th class="sortable">Network Type<span class="sort-indicator icon-dropdown"></span></th>
+                        <th class="text-center">Network Name</th>
+                        <th class="text-center">Clients</th>
+                        <th class="text-center">Bandwidth Limit Up</th>
+                        <th class="text-center">Bandwidth Limit Down</th>
+                        <th class="text-center hidden-xs-down">Config Template</th>
+                        <th class="text-center">Utilization</th>
+                        <th class="text-center">Number of Spokes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for hub in hubs_and_spokes %}
+                    <tr class="parent" id="{{ hub.id }}">
+                        <td>
+                            <span class="icon-router-outline icon-size-20 half-margin-right text-light"></span>
+                            <span>Hub</span>
+                        </td>
+                        <td class="text-center">{{ hub.name }}</td>
+                        <td class="text-center"><span class="badge--warning">{{ hub.num_clients }}</span></td>
+                        <td class="text-center">{{ hub.bandwidth_limit_up }}</td>
+                        <td class="text-center">{{ hub.bandwidth_limit_down }}</td>
+                        <td class="text-center">{{ hub.template }}</td>
+                        <td class="text-center">{{ hub.utilization }}</td>
+                        <td class="text-center">{{ hub.num_spokes }}</td>
+                        <td><i class="fa fa-chevron-down"></i></td>
+                    </tr>
+                    {% for spoke in hub.spokes %}
+                    <tr class="cchild {{ hub.id }}" style="background-color: #999; color: #ffffff;">
+                       <td>
+                            <span class="icon-router-outline icon-size-20 half-margin-right text-light"></span>
+                            <span>Spoke</span>
+                        </td>
+                        <td class="text-center">{{ spoke.name }}</td>
+                        <td class="text-center"><span class="badge--warning">{{ spoke.num_clients }}</span></td>
+                        <td class="text-center">{{ spoke.bandwidth_limit_up }}</td>
+                        <td class="text-center">{{ spoke.bandwidth_limit_down }}</td>
+                        <td class="text-center">{{ spoke.template }}</td>
+                        <td class="text-center">{{ spoke.utilization }}</td>
+                    </tr>
+                    {% endfor %}
+                    {% endfor %}
+                </tbody>
+            </table>
+             <!--CUSTOMIZE END-->
+        </div>
+         <!--CUSTOMIZE: Change pagination content as needed -->
+<!--        <ul class="pagination pull-right">-->
+<!--            <li><a class="disabled" href="javascript:;"><span class="icon-chevron-left-double"></span></a></li>-->
+<!--            <li><a class="disabled" href="javascript:;"><span class="icon-chevron-left"></span></a></li>-->
+<!--            <li class="active"><a href="javascript:;">1</a></li>-->
+<!--            <li><a href="javascript:;">2</a></li>-->
+<!--            <li><a href="javascript:;">3</a></li>-->
+<!--            <li><a href="javascript:;">4</a></li>-->
+<!--            <li><span class="icon-more"></span></li>-->
+<!--            <li><a href="javascript:;">16</a></li>-->
+<!--            <li><a href="javascript:;"><span class="icon-chevron-right"></span></a></li>-->
+<!--            <li><a href="javascript:;"><span class="icon-chevron-right-double"></span></a></li>-->
+<!--        </ul>-->
+        <!--CUSTOMIZATION END-->
+    </div>
+
+{%  endblock %}
+
