@@ -28,7 +28,7 @@ In order to use the Meraki API, you need to enable the API for your organization
 
 ## Installation/Configuration
 1. Clone this repository with `git clone https://github.com/gve-sw/gve_devnet_meraki_sdwan_dashboard.git`.
-2. Set up a Python virtual environment. Make sure Python 3 is installed in your environment, and if not, you may download Python [here](https://www.python.org/downloads/). Once Python 3 is installed in your environment, you can activate the virtual environment with the instructions found [here](https://docs.python.org/3/tutorial/venv.html).
+2. Set up a Python virtual environment. Make sure Python 3 is installed in your environment, and if not, you may download Python [here](https://www.python.org/downloads/). Reminder that this code was written with Python 3.10, so it is recommended to install Python 3.10. Once Python 3 is installed in your environment, you can activate the virtual environment with the instructions found [here](https://docs.python.org/3/tutorial/venv.html).
 3. Install the requirements with `pip3 install -r requirements.txt`.
 4. Add Meraki API key obtained in the Prerequisites section and the name of the Meraki organization you would like to view to environment variables in the `.env` file.
 ```
@@ -41,6 +41,8 @@ To start the web app, use the command:
 ```
 $ flask run
 ```
+> Note: If you experience the following runtime error when you try to start the web app after following the above instructions: `RuntimeError: Install Flask with the 'async' extra in order to use async views`, then enter the command `pip3 install 'Flask[async]'` in the console.
+
 Then access the app in your browser of choice at the address `http://127.0.0.1:5000`. 
 Once the page loads (it will take a minute due to the number of API calls needed to make for each network in the organization), it will display the network load information about the hub networks. 
 
