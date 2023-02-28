@@ -21,6 +21,7 @@ import merakiAPI
 import traceback
 import asyncio
 from aiolimiter import AsyncLimiter
+from pprint import pprint
 
 # load all environment variables
 load_dotenv()
@@ -102,6 +103,18 @@ async def getTotalClients(net_id, spoke_info, hub_info, semaphore):
 
         semaphore.release()
 
+# get the appliance performance of the appliance in each hub
+async def getRouterPerformance(router, hub_info, semaphore):
+    await semaphore.acquire()
+    async with limiter:
+        router_perf = merakiAPI.getAppliancePerformance(router)
+        if router_perf is not None and "perfScore" in router_perf.keys():
+            hub_info["appliancePerformance"] = router_perf["perfScore"]
+        else:
+            hub_info["appliancePerformance"] = "N/A"
+
+        semaphore.release()
+
 
 ##Routes
 #Instructions
@@ -117,11 +130,11 @@ async def meraki():
         for net in networks:
             net_dict[net["id"]] = {key: net[key] for key in net if key != "id"}
 
-        top_utilization = merakiAPI.getTopAppliancesByUtilization(org_id)
-        for item in top_utilization:
-            network_id = item["network"]["id"]
-            utilization = item["utilization"]["average"]["percentage"]
-            net_dict[network_id]["utilization"] = utilization
+        #top_utilization = merakiAPI.getTopAppliancesByUtilization(org_id)
+        #for item in top_utilization:
+            #network_id = item["network"]["id"]
+            #utilization = item["utilization"]["average"]["percentage"]
+            #net_dict[network_id]["utilization"] = utilization
 
         hubs_to_spokes = {} # map the hub network ids to their spoke networks
         spokes_to_hubs = {} # map spoke network ids to their hub networks
@@ -133,7 +146,8 @@ async def meraki():
             net_id = network["id"]
             # the network VPN information can only be retrieved from networks with MX appliances
             if "appliance" in network["productTypes"]:
-                tasks.append(getHubsAndSpokes(net_id, hubs_to_spokes, spokes_to_hubs, semaphore))
+                new_task = asyncio.create_task(getHubsAndSpokes(net_id, hubs_to_spokes, spokes_to_hubs, semaphore))
+                tasks.append(new_task)
 
         await asyncio.wait(tasks)
         # some spoke networks have no associated hub (make it make sense idk), these spokes will be grouped under the key "None" in the hubs_to_spokes dict
@@ -153,24 +167,30 @@ async def meraki():
 
         tasks = []
 
+        hubs = [hub for hub in hubs_to_spokes.keys() if hub != "None"] # making a list of all the network ids of the hubs that aren't None
+        routers = merakiAPI.getNetworkRouters(org_id, hubs) #get routers of hub networks
+        hub_to_routers = {router["networkId"]: router["serial"] for router in routers}
+
         # iterate through the hubs in the hubs_to_spokes dict and then retrieve the network information
         for hub in hubs_to_spokes:
             hub_network_info = {} # this dictionary will hold the necessary network information for the hub - then it will be appended to the hubs_and_spokes_structure
             hub_network_info["id"] = hub
 
+
+
             # if hub is not None then we can get network information about it
             if hub != "None":
-                if "utilization" in net_dict[hub].keys():
-                    hub_network_info["utilization"] = net_dict[hub]["utilization"]
-                else:
-                    hub_network_info["utilization"] = ""
-
                 hub_network_info["name"] = net_dict[hub]["name"]
+
+                router = hub_to_routers[hub]
+                new_task = asyncio.create_task(getRouterPerformance(router, hub_network_info, semaphore))
+                tasks.append(new_task)
 
                 # if the hub network is bound to a configuration template, then we need to get the template name to add to the hub_network_info dict
                 if net_dict[hub]["isBoundToConfigTemplate"]:
                     template_id = net_dict[hub]["configTemplateId"]
-                    tasks.append(getConfigTemplateName(org_id, template_id, hub_network_info, semaphore))
+                    new_task = asyncio.create_task(getConfigTemplateName(org_id, template_id, hub_network_info, semaphore))
+                    tasks.append(new_task)
                 else:
                     hub_network_info["template"] = None
 
@@ -197,7 +217,7 @@ async def meraki():
                     spoke_network_info["utilization"] = net_dict[spoke]["utilization"]
                 else:
                     spoke_network_info["utilization"] = ""
-                    
+
                 spoke_network_info["id"] = spoke
 
                 spoke_network_info["name"] = net_dict[spoke]["name"]
@@ -205,21 +225,25 @@ async def meraki():
                 # if the spoke network is bound to a configuration template, then we need to get the template name to add to the spoke_network_info dict
                 if net_dict[spoke]["isBoundToConfigTemplate"]:
                     template_id = net_dict[spoke]["configTemplateId"]
-                    tasks.append(getConfigTemplateName(org_id, template_id, spoke_network_info, semaphore))
+                    new_task = asyncio.create_task(getConfigTemplateName(org_id, template_id, spoke_network_info, semaphore))
+                    tasks.append(new_task)
 
                     # if the network is bound to a template, then we have to make the bandwidth API call with the template id
                     # calculate the network bandwidth of the spoke then add it to the spoke_network_info dict (there is a up and down limit)
-                    tasks.append(getNetworkBandwidthLimits(template_id, spoke_network_info, hub_network_info, semaphore))
+                    new_task = asyncio.create_task(getNetworkBandwidthLimits(template_id, spoke_network_info, hub_network_info, semaphore))
+                    tasks.append(new_task)
                 else:
                     spoke_network_info["template"] = None
 
                     # the network bandwidth API call only works with networks not bound to a template
-                    tasks.append(getNetworkBandwidthLimits(spoke, spoke_network_info, hub_network_info, semaphore))
+                    new_task = asyncio.create_task(getNetworkBandwidthLimits(spoke, spoke_network_info, hub_network_info, semaphore))
+                    tasks.append(new_task)
 
                 # calculate the number of network clients associated with the spoke in the last 24 hours and then add it to the spoke_network_info dict
-                tasks.append(getTotalClients(spoke, spoke_network_info, hub_network_info, semaphore))
+                new_task = asyncio.create_task(getTotalClients(spoke, spoke_network_info, hub_network_info, semaphore))
+                tasks.append(new_task)
 
-                
+
 
                 # add this spoke to the list of spokes associated with the hub
                 hub_network_info["spokes"].append(spoke_network_info)
@@ -231,7 +255,7 @@ async def meraki():
             hubs_and_spokes_structure.append(hub_network_info)
 
         await asyncio.wait(tasks)
-        
+
         return render_template('merakiAPI.html', org_name=ORG_NAME, hubs_and_spokes=hubs_and_spokes_structure, hiddenLinks=False, timeAndLocation=getSystemTimeAndLocation())
     except Exception as e:
         print(e)

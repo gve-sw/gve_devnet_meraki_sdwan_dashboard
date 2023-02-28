@@ -61,6 +61,12 @@ def getNetwork(net_id):
 
     return response
 
+#Get network devices
+def getNetworkRouters(org_id, net_ids):
+    response = DASHBOARD.organizations.getOrganizationDevices(org_id, networkIds=net_ids, productTypes=["appliance"])
+
+    return response
+
 def getConfigTemplates(org_id):
     response = DASHBOARD.organizations.getOrganizationConfigTemplates(org_id)
 
@@ -105,6 +111,12 @@ def getNetworkBandwidth(net_id):
 
 def getTopAppliancesByUtilization(org_id):
     response = DASHBOARD.organizations.getOrganizationSummaryTopAppliancesByUtilization(org_id)
+
+    return response
+
+
+def getAppliancePerformance(router):
+    response = DASHBOARD.appliance.getDeviceAppliancePerformance(router)
 
     return response
 
