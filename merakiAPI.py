@@ -38,6 +38,7 @@ def getOrganizations():
 
     return response
 
+
 #Get specific organization ID
 def getOrganizationId(org_name):
     organizations = getOrganizations()
@@ -47,78 +48,103 @@ def getOrganizationId(org_name):
 
     return None
 
+
 #Networks
 def getNetworks(org_id):
-    response = DASHBOARD.organizations.getOrganizationNetworks(
-        org_id, total_pages='all'
-    )
+    try:
+        response = DASHBOARD.organizations.getOrganizationNetworks(org_id, total_pages='all')
 
-    return response
+        return response
+    except Exception as e:
+        print("There was an error getting the networks of the organization with org id " + org_id)
+        print(e)
 
-#Get network
-def getNetwork(net_id):
-    response = DASHBOARD.networks.getNetwork(net_id)
+        return None
 
-    return response
 
 #Get network devices
 def getNetworkRouters(org_id, net_ids):
-    response = DASHBOARD.organizations.getOrganizationDevices(org_id, networkIds=net_ids, productTypes=["appliance"])
+    try:
+        response = DASHBOARD.organizations.getOrganizationDevices(org_id, networkIds=net_ids, productTypes=["appliance"])
 
-    return response
+        return response
+    except Exception as e:
+        print("There was an error getting the routers from the networks in the organization with org id " + org_id)
+        print(e)
 
-def getConfigTemplates(org_id):
-    response = DASHBOARD.organizations.getOrganizationConfigTemplates(org_id)
-
-    return response
+        return None
 
 
 def getConfigTemplate(org_id, template_id):
-    response = DASHBOARD.organizations.getOrganizationConfigTemplate(org_id, template_id)
+    try:
+        response = DASHBOARD.organizations.getOrganizationConfigTemplate(org_id, template_id)
 
-    return response
+        return response
+    except Exception as e:
+        print("There was an error getting the configuration template information with template id " + template_id)
+        print(e)
 
-
-def getNetworkDevices(net_id):
-    response = DASHBOARD.networks.getNetworkDevices(net_id)
-
-    return response
-
-
-def getNetworkTraffic(net_id, timespan):
-    response = DASHBOARD.networks.getNetworkTraffic(net_id, timespan=timespan)
-
-    return response
+        return None
 
 
 def getNetworkClients(net_id, timespan):
-    response = DASHBOARD.networks.getNetworkClients(net_id, timespan=timespan)
+    try:
+        response = DASHBOARD.networks.getNetworkClients(net_id, timespan=timespan, total_pages="all")
 
-    return response
+        return response
+    except Exception as e:
+        print("There was an error getting the clients of the network with net id " + net_id)
+        print(e)
+
+        return None
 
 
 def getNetworkVPN(net_id):
-    response = DASHBOARD.appliance.getNetworkApplianceVpnSiteToSiteVpn(net_id)
+    try:
+        response = DASHBOARD.appliance.getNetworkApplianceVpnSiteToSiteVpn(net_id)
 
-    return response
+        return response
+    except Exception as e:
+        print("There was an error getting the site to site VPN information of the network with net id " + net_id)
+        print(e)
+
+        return None
 
 
 def getNetworkBandwidth(net_id):
-    response = DASHBOARD.appliance.getNetworkApplianceTrafficShaping(net_id)
+    try:
+        response = DASHBOARD.appliance.getNetworkApplianceTrafficShapingUplinkBandwidth(net_id)
 
-    return response
+        if "wan2" in response["bandwidthLimits"].keys():
+            up_bandwidth = response["bandwidthLimits"]["wan1"]["limitUp"] + response["bandwidthLimits"]["wan2"]["limitUp"]
+            down_bandwidth = response["bandwidthLimits"]["wan1"]["limitDown"] + response["bandwidthLimits"]["wan2"]["limitDown"]
+        else:
+            up_bandwidth = response["bandwidthLimits"]["wan1"]["limitUp"]
+            down_bandwidth = response["bandwidthLimits"]["wan1"]["limitDown"]
 
+        bandwidth_limits = {
+            "up": up_bandwidth,
+            "down": down_bandwidth
+        }
 
-def getTopAppliancesByUtilization(org_id):
-    response = DASHBOARD.organizations.getOrganizationSummaryTopAppliancesByUtilization(org_id)
+        return bandwidth_limits
+    except Exception as e:
+        print("There was an error getting the network bandwidth information for network with net id " + net_id)
+        print(e)
 
-    return response
+        return None
 
 
 def getAppliancePerformance(router):
-    response = DASHBOARD.appliance.getDeviceAppliancePerformance(router)
+    try:
+        response = DASHBOARD.appliance.getDeviceAppliancePerformance(router)
 
-    return response
+        return response
+    except Exception as e:
+        print("There was an error getting the appliance performance of the router " + router)
+        print(e)
+
+        return None
 
 
 def usage():
@@ -128,17 +154,7 @@ def usage():
 
 def main(argv):
     print("This file is for defining functions. Please don't run it on its own. It doesn't do anything.")
-    #pprint(getNetworkBandwidth('L_793196484370632441'))
-    #top_utilization = getTopAppliancesByUtilization("940024")
-    #network_by_utilization = {}
-    #for item in top_utilization:
-    #    network_id = item["network"]["id"]
-    #    utilization = item["utilization"]["average"]["percentage"]
-
-    #    network_by_utilization[network_id] = utilization
-
-    #pprint(network_by_utilization)
+    
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv))
-

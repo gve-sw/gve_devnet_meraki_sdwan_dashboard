@@ -57,8 +57,8 @@ def getSystemTimeAndLocation():
 
 # separates the hubs and spokes
 async def getHubsAndSpokes(net_id, hubs_to_spokes, spokes_to_hubs, semaphore):
-    await semaphore.acquire()
-    async with limiter:
+    print("Getting network VPN info for " + net_id)
+    async with limiter, semaphore:
         vpn_info = merakiAPI.getNetworkVPN(net_id)
         # if network is a hub, add the network id as a key to the hubs_to_spokes dict - spokes to be added later
         if vpn_info["mode"] == "hub":
@@ -66,54 +66,53 @@ async def getHubsAndSpokes(net_id, hubs_to_spokes, spokes_to_hubs, semaphore):
         # if network is a spoke, add the network id as a key to the spokes_to_hubs dict and assign its value to be the list of associated hubs
         elif vpn_info["mode"] == "spoke":
             spokes_to_hubs[net_id] = vpn_info["hubs"]
+    print("Retrieved network VPN info for " + net_id)
 
-        semaphore.release()
 
 # get the config template name
 async def getConfigTemplateName(org_id, template_id, network_info, semaphore):
-    await semaphore.acquire()
-    async with limiter:
+    print("Getting template info for template " + template_id)
+    async with limiter, semaphore:
         template = merakiAPI.getConfigTemplate(org_id, template_id)
         template_name = template["name"]
         network_info["template"] = template_name
+    print("Retrieved template info for template " + template_id)
 
-        semaphore.release()
 
 # get the network bandwidth limits of the spoke and then add it to the total bandwidth for the hub
 async def getNetworkBandwidthLimits(net_id, spoke_info, hub_info, semaphore):
-    await semaphore.acquire()
-    async with limiter:
+    print("Getting bandwidth info for network " + net_id)
+    async with limiter, semaphore:
         network_bandwidth = merakiAPI.getNetworkBandwidth(net_id)
-        spoke_info["bandwidth_limit_up"] = network_bandwidth["globalBandwidthLimits"]["limitUp"]
-        spoke_info["bandwidth_limit_down"] = network_bandwidth["globalBandwidthLimits"]["limitDown"]
+        spoke_info["bandwidth_limit_up"] = network_bandwidth["up"]
+        spoke_info["bandwidth_limit_down"] = network_bandwidth["down"]
 
         hub_info["bandwidth_limit_up"] += spoke_info["bandwidth_limit_up"]
         hub_info["bandwidth_limit_down"] += spoke_info["bandwidth_limit_down"]
+    print("Retrieved bandwidth info for network " + net_id)
 
-        semaphore.release()
 
 # get the total clients for a spoke and then add it to the total clients in the hub
 async def getTotalClients(net_id, spoke_info, hub_info, semaphore):
-    await semaphore.acquire()
-    async with limiter:
+    print("Getting clients for network " + net_id)
+    async with limiter, semaphore:
         clients = merakiAPI.getNetworkClients(net_id, 86400)
         num_clients = len(clients)
         spoke_info["num_clients"] = num_clients
         hub_info["num_clients"] += num_clients
+    print("Retrieved clients for network " + net_id)
 
-        semaphore.release()
 
 # get the appliance performance of the appliance in each hub
 async def getRouterPerformance(router, hub_info, semaphore):
-    await semaphore.acquire()
-    async with limiter:
+    print("Getting router performance score for " + router)
+    async with limiter, semaphore:
         router_perf = merakiAPI.getAppliancePerformance(router)
         if router_perf is not None and "perfScore" in router_perf.keys():
             hub_info["appliancePerformance"] = router_perf["perfScore"]
         else:
             hub_info["appliancePerformance"] = "N/A"
-
-        semaphore.release()
+    print("Retrieved router performance score for " + router)
 
 
 ##Routes
@@ -125,16 +124,14 @@ async def meraki():
     try:
         # Get the organization ID and networks in that organization specified in .env
         org_id = merakiAPI.getOrganizationId(ORG_NAME)
+        if org_id is None:
+            return render_template('merakiAPI.html', hiddenLinks=False, error=True, errormessage="Unable to find org id for given organization. Check org name", errorcode="Organization not found", timeAndLocation=getSystemTimeAndLocation())
         networks = merakiAPI.getNetworks(org_id)
+        if networks is None:
+            return render_template('merakiAPI.html', hiddenLinks=False, error=True, errormessage="Unable to retrieve networks", errorcode="API error", timeAndLocation=getSystemTimeAndLocation())
         net_dict = {} # map net_id to networks to stop making so many API calls
         for net in networks:
             net_dict[net["id"]] = {key: net[key] for key in net if key != "id"}
-
-        #top_utilization = merakiAPI.getTopAppliancesByUtilization(org_id)
-        #for item in top_utilization:
-            #network_id = item["network"]["id"]
-            #utilization = item["utilization"]["average"]["percentage"]
-            #net_dict[network_id]["utilization"] = utilization
 
         hubs_to_spokes = {} # map the hub network ids to their spoke networks
         spokes_to_hubs = {} # map spoke network ids to their hub networks
@@ -150,7 +147,7 @@ async def meraki():
                 tasks.append(new_task)
 
         await asyncio.wait(tasks)
-        # some spoke networks have no associated hub (make it make sense idk), these spokes will be grouped under the key "None" in the hubs_to_spokes dict
+        # some spoke networks have no associated hub, these spokes will be grouped under the key "None" in the hubs_to_spokes dict
         hubs_to_spokes["None"] = []
 
         # iterate through the spokes in the spokes_to_hubs dict and their corresponding hubs
@@ -169,6 +166,8 @@ async def meraki():
 
         hubs = [hub for hub in hubs_to_spokes.keys() if hub != "None"] # making a list of all the network ids of the hubs that aren't None
         routers = merakiAPI.getNetworkRouters(org_id, hubs) #get routers of hub networks
+        if routers is None:
+            return render_template('merakiAPI.html', hiddenLinks=False, error=True, errormessage="Unable to retrieve networks", errorcode="API error", timeAndLocation=getSystemTimeAndLocation())
         hub_to_routers = {router["networkId"]: router["serial"] for router in routers}
 
         # iterate through the hubs in the hubs_to_spokes dict and then retrieve the network information
