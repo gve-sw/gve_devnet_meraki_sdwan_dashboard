@@ -36,25 +36,6 @@ semaphore = asyncio.Semaphore(value=10)
 
 
 # Methods
-# Returns location and time of accessing device
-def getSystemTimeAndLocation():
-    # request user ip
-    userIPRequest = requests.get('https://get.geojs.io/v1/ip.json')
-    userIP = userIPRequest.json()['ip']
-
-    # request geo information based on ip
-    geoRequestURL = 'https://get.geojs.io/v1/ip/geo/' + userIP + '.json'
-    geoRequest = requests.get(geoRequestURL)
-    geoData = geoRequest.json()
-
-    #create info string
-    location = geoData['country']
-    timezone = geoData['timezone']
-    current_time=datetime.datetime.now().strftime("%d %b %Y, %I:%M %p")
-    timeAndLocation = "System Information: {}, {} (Timezone: {})".format(location, current_time, timezone)
-
-    return timeAndLocation
-
 # separates the hubs and spokes
 async def getHubsAndSpokes(net_id, hubs_to_spokes, spokes_to_hubs, semaphore):
     print("Getting network VPN info for " + net_id)
@@ -125,10 +106,10 @@ async def meraki():
         # Get the organization ID and networks in that organization specified in .env
         org_id = merakiAPI.getOrganizationId(ORG_NAME)
         if org_id is None:
-            return render_template('merakiAPI.html', hiddenLinks=False, error=True, errormessage="Unable to find org id for given organization. Check org name", errorcode="Organization not found", timeAndLocation=getSystemTimeAndLocation())
+            return render_template('merakiAPI.html', hiddenLinks=False, error=True, errormessage="Unable to find org id for given organization. Check org name", errorcode="Organization not found")
         networks = merakiAPI.getNetworks(org_id)
         if networks is None:
-            return render_template('merakiAPI.html', hiddenLinks=False, error=True, errormessage="Unable to retrieve networks", errorcode="API error", timeAndLocation=getSystemTimeAndLocation())
+            return render_template('merakiAPI.html', hiddenLinks=False, error=True, errormessage="Unable to retrieve networks", errorcode="API error")
         net_dict = {} # map net_id to networks to stop making so many API calls
         for net in networks:
             net_dict[net["id"]] = {key: net[key] for key in net if key != "id"}
@@ -154,7 +135,7 @@ async def meraki():
         for spoke in spokes_to_hubs:
             for hub in spokes_to_hubs[spoke]:
                 # if the hub is not None, add it to the list of spokes associated with the hub in the hubs_to_spokes dict
-                if hub["hubId"] is not None:
+                if hub["hubId"] is not None and hub["hubId"] != '':
                     hubs_to_spokes[hub["hubId"]].append(spoke)
                 # if the hub is None, then it will be grouped under the key "None" in the hubs_to_spokes dict
                 else:
@@ -167,7 +148,7 @@ async def meraki():
         hubs = [hub for hub in hubs_to_spokes.keys() if hub != "None"] # making a list of all the network ids of the hubs that aren't None
         routers = merakiAPI.getNetworkRouters(org_id, hubs) #get routers of hub networks
         if routers is None:
-            return render_template('merakiAPI.html', hiddenLinks=False, error=True, errormessage="Unable to retrieve networks", errorcode="API error", timeAndLocation=getSystemTimeAndLocation())
+            return render_template('merakiAPI.html', hiddenLinks=False, error=True, errormessage="Unable to retrieve networks", errorcode="API error")
         hub_to_routers = {router["networkId"]: router["serial"] for router in routers}
 
         # iterate through the hubs in the hubs_to_spokes dict and then retrieve the network information
@@ -255,11 +236,11 @@ async def meraki():
 
         await asyncio.wait(tasks)
 
-        return render_template('merakiAPI.html', org_name=ORG_NAME, hubs_and_spokes=hubs_and_spokes_structure, hiddenLinks=False, timeAndLocation=getSystemTimeAndLocation())
+        return render_template('merakiAPI.html', org_name=ORG_NAME, hubs_and_spokes=hubs_and_spokes_structure, hiddenLinks=False)
     except Exception as e:
         print(e)
         print(traceback.format_exc())
-        return render_template('merakiAPI.html', hiddenLinks=False, error=True, errormessage="", errorcode=e, timeAndLocation=getSystemTimeAndLocation())
+        return render_template('merakiAPI.html', hiddenLinks=False, error=True, errormessage="", errorcode=e)
 
 
 if __name__ == "__main__":
